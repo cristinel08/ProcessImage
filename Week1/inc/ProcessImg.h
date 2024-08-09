@@ -1,30 +1,24 @@
 #include <stdint.h>
 #include <stdio.h>
+#include "Image.h"
+#include "Matrix.h"
 class ProcessImg
 {
 private:
     /* data */
-    uint16_t width_;
-    uint16_t height_;
-    uint8_t channels_;
-    uint16_t intensityLvl_;
-    uint8_t* imgPixels_;
 public:
-    ProcessImg() = default;
-    ~ProcessImg() = default;
-    ProcessImg(
-        uint16_t const& width,
-        uint16_t const& height,
-        uint8_t const&  channels,
-        uint8_t*        imgData
+    ProcessImg() = delete;
+    ~ProcessImg() = delete;
+
+    static void ModifyIntensityLvl(
+        Image&          destImg,
+        Image* const    sourceImg,
+        uint16_t const& desiredIntensity
     );
-    void SetProcessData(
-        uint16_t const& width,
-        uint16_t const& height,
-        uint8_t const&  channels,
-        uint8_t*        imgData
-    );
-    void ModifyIntensityLvl(
-        uint16_t const& intensityLvl
+
+    static void FilterImg(
+        Image&                 destImg,
+        Image* const           sourceImg,
+        Matrix<uint8_t>* const filterImg
     );
 };

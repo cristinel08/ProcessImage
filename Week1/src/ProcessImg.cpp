@@ -1,46 +1,62 @@
 #include "ProcessImg.h"
 
-ProcessImg::ProcessImg(
-    uint16_t const& width,
-    uint16_t const& height,
-    uint8_t const&  channels,
-    uint8_t*        imgData
-) : intensityLvl_ { 256 }
-{
-    SetProcessData(width, height, channels, imgData);
-}
-
-void ProcessImg::SetProcessData(
-    uint16_t const& width,
-    uint16_t const& height,
-    uint8_t const&  channels,
-    uint8_t*        imgData
-)
-{
-    width_ = width;
-    height_ = height;
-    channels_ = channels;
-    imgPixels_ = imgData;
-}
-
 void ProcessImg::ModifyIntensityLvl(
-    uint16_t const& intensityLvl
+        Image&          destImg,
+        Image* const    sourceImg,
+        uint16_t const& desiredIntensity
 )
 {
-    if(intensityLvl_ != intensityLvl)
+    destImg = Image(sourceImg->GetWidth(), sourceImg->GetHeight());
+    uint16_t intLvl = destImg.GetIntensityLvl();
+    uint32_t fullImgSize = sourceImg->FullImageSize();
+    memcpy(destImg.GetImageData(), sourceImg->GetImageData(), fullImgSize * sizeof(uint8_t));
+    if(intLvl != desiredIntensity)
     {
-        if(intensityLvl & (intensityLvl - 1) != 0 && intensityLvl > intensityLvl_)
+        if(desiredIntensity & (desiredIntensity - 1) != 0 && desiredIntensity > intLvl)
         {
-            printf("Please enter a number that is the power of 2 and less then the img intesity: %d", intensityLvl_);
+            printf("Please enter a number that is the power of 2 and less then the img intesity: %d", intLvl);
             return;
         }
-        int level = intensityLvl_ / intensityLvl;
-        intensityLvl_ = intensityLvl;
-        uint8_t* data = imgPixels_;
-        for(uint32_t pixel = 0; pixel < width_ * height_ * channels_; pixel++)
+        int level = intLvl / desiredIntensity;
+        destImg.SetIntensityLvl(desiredIntensity);
+        uint8_t* data = destImg.GetImageData();
+        for(uint32_t pixel = 0; pixel < fullImgSize; pixel++)
         {
             *data = (*data / level) * level;
             data++;
         }
+    }
+}
+
+void ProcessImg::FilterImg(
+    Image&                  destImg,
+    Image* const            sourceImg,
+    Matrix<uint8_t>* const  filterImg
+)
+{
+    destImg = Image(sourceImg->GetWidth(), sourceImg->GetHeight());
+    memcpy(destImg.GetImageData(), sourceImg->GetImageData(), sourceImg->FullImageSize());
+    uint16_t width = sourceImg->GetWidth();
+    uint16_t height = sourceImg->GetHeight();
+    uint32_t imgSize = destImg.FullImageSize();
+    uint16_t sumPix{0};
+    uint16_t matrixSize = filterImg->GetMatrixSize();
+    uint8_t cols = filterImg->GetCols();
+    uint8_t* data = destImg.GetImageData();
+    uint16_t idx{};
+    for(uint32_t pix = 0; pix < imgSize; pix++)
+    {
+        if(pix % width + cols < width && 
+           pix / width + matrixSize / cols < height)
+        {
+            for(uint16_t neighbor{0}; neighbor < matrixSize; neighbor++)
+            {
+                idx = pix + neighbor % cols + neighbor / cols * width;
+                sumPix += data[idx]; 
+            }
+            data[pix] = sumPix / 9;
+            sumPix = 0;
+        }
+
     }
 }
