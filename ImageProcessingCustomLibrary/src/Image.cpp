@@ -2,11 +2,12 @@
 
 Image::Image(
     void
-) : width_{ 0 },
-    height_{ 0 },
-    channels_ { 0 },
-    intensityLvl_{ 0 }
+)
 {
+    width_          = 0 ;
+    height_         = 0 ;
+    channels_       = 0 ;
+    intensityLvl_   = 0 ;
     img_ = cv::Mat::zeros(100, 100, CV_8U);
 }
 
@@ -26,6 +27,7 @@ Image::Image(
     intensityLvl_{ 256 }
 {
     img_ = cv::Mat::zeros(cv::Size{width, height}, CV_8U);
+    // img_.release();
 }
 
 void Image::ReadImg(

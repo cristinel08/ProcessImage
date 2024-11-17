@@ -2,6 +2,8 @@
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
 #include <memory>
+#include "Matrix.h"
+#pragma once
 class Image
 {
 private:
