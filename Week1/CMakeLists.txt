@@ -18,6 +18,6 @@ target_link_libraries(${TARGET_NAME} ImageProcessing)
 add_custom_command(
     TARGET ${TARGET_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-    ${WEEK1_ROOT}/imgs/carnavalWheel.jfif
+    ${PROJECT_ROOT}/imgs/carnavalWheel.jfif
     ${CMAKE_BINARY_DIR}/${TARGET_NAME}/$<CONFIG>/
 )   

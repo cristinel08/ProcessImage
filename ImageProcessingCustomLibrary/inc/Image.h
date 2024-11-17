@@ -6,14 +6,6 @@
 #pragma once
 class Image
 {
-private:
-    /* data */
-    cv::Mat img_;
-    uint16_t width_;
-    uint16_t height_;
-    uint8_t channels_;
-    uint16_t intensityLvl_;
-
 public:
     Image();
     ~Image();
@@ -27,7 +19,7 @@ public:
     uint8_t* GetImageData(
         void
     );
-    uint32_t FullImageSize(
+    uint32_t GetFullImageSize(
         void
     );
     void ReadImg(
@@ -46,4 +38,15 @@ public:
     uint16_t GetHeight(
         void
     );
+    cv::Mat GetMat(
+        void
+    );
+
+private:
+    /* data */
+    cv::Mat img_;
+    uint16_t width_;
+    uint16_t height_;
+    uint8_t channels_;
+    uint16_t intensityLvl_;
 };

@@ -17,6 +17,5 @@ int main()
     a.CreateRotMatrix(180.0);
     process.RotateImg(destinationImg, &sourceImg, &a);
     destinationImg.Display(0, "Rotated Output");
-
     return 0;
 }

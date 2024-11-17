@@ -6,9 +6,11 @@ void ProcessImg::ModifyIntensityLvl(
         uint16_t const& desiredIntensity
 )
 {
+    assert(destImg.GetFullImageSize());
     destImg = Image(sourceImg->GetWidth(), sourceImg->GetHeight());
     uint16_t intLvl = destImg.GetIntensityLvl();
-    uint32_t fullImgSize = sourceImg->FullImageSize();
+    uint32_t fullImgSize = sourceImg->GetFullImageSize();
+    assert(fullImgSize > 0);
     memcpy(destImg.GetImageData(), sourceImg->GetImageData(), fullImgSize * sizeof(uint8_t));
     if(intLvl != desiredIntensity)
     {
@@ -36,7 +38,7 @@ void ProcessImg::FilterImg(
 {
     uint16_t width = sourceImg->GetWidth();
     uint16_t height = sourceImg->GetHeight();
-    uint32_t imgSize = destImg.FullImageSize();
+    uint32_t imgSize = destImg.GetFullImageSize();
     uint16_t sumPix{0};
     uint16_t matrixSize = filterImg->GetMatrixSize();
     uint8_t cols = filterImg->GetCols();
@@ -48,8 +50,9 @@ void ProcessImg::FilterImg(
     {
         destImg = Image(sourceImg->GetWidth(), sourceImg->GetHeight());
     }
+    assert(imgSize > 0 && width == imgSize / height);
 
-    memcpy(destImg.GetImageData(), sourceImg->GetImageData(), sourceImg->FullImageSize());
+    memcpy(destImg.GetImageData(), sourceImg->GetImageData(), sourceImg->GetFullImageSize());
 
     for(uint32_t pix = 0; pix < imgSize; pix++)
     {
@@ -79,7 +82,7 @@ void ProcessImg::RotateImg(
 {
     uint16_t width = sourceImg->GetWidth();
     uint16_t height = sourceImg->GetHeight();
-    uint32_t imgSize = destImg.FullImageSize();
+    uint32_t imgSize = destImg.GetFullImageSize();
     uint8_t* rotatedData = destImg.GetImageData();
     uint8_t* data = sourceImg->GetImageData();
     float* rotMat = rotMatrix->GetMatrix();
@@ -89,8 +92,8 @@ void ProcessImg::RotateImg(
     {
         destImg = { sourceImg->GetWidth(), sourceImg->GetHeight() };
     }
-
-    memcpy(destImg.GetImageData(), sourceImg->GetImageData(), sourceImg->FullImageSize());
+    assert(imgSize > 0 && width == imgSize / height);
+    memcpy(destImg.GetImageData(), sourceImg->GetImageData(), sourceImg->GetFullImageSize());
 
     // Calculate the center of the image
     int centerX = width / 2;
@@ -100,8 +103,6 @@ void ProcessImg::RotateImg(
 
     for(int pix = 0; pix < height * width; pix++)
     {
-        // srcXFloat = rotMat[4] * (pix % width - centerX) + rotMat[7] * (pix / width - centerY);
-        // srcYFloat = rotMat[5] * (pix % width - centerX) + rotMat[8] * (pix / width - centerY);
         srcX = static_cast<int>
         (
             std::round
@@ -130,5 +131,143 @@ void ProcessImg::RotateImg(
         {
             rotatedData[pix] = 0;  // Background color
         }
+    }
+}
+
+void ProcessImg::CreateJPEG(
+    Image& destImg,
+    Image* const sourceImg,
+    uint8_t const& quantScale
+)
+{
+    assert(sourceImg->GetFullImageSize() > 0);
+    if(sourceImg->GetFullImageSize() != destImg.GetFullImageSize())
+    {
+        destImg = {sourceImg->GetWidth(), sourceImg->GetHeight()};
+    }
+    uint8_t pixelBlock8x8[64]{};
+    uint8_t* pixelDataIn = sourceImg->GetImageData();
+    uint16_t width = sourceImg->GetWidth();
+    uint16_t height = sourceImg->GetHeight();
+    uint16_t currentLine = 0;
+    for(uint16_t block = 0; block < sourceImg->GetFullImageSize();)
+    {
+        for(uint8_t u = 0; u < 8; u++)
+        {
+            for(uint8_t v = 0; v < 8; v++)
+            {
+                pixelBlock8x8[u * 8 + v] = pixelDataIn[block % width + v + (block / width + u) * width];
+            }
+        }
+        if((block + 8) / width > currentLine)
+        {
+            block = (block / width + 8) * width;
+            currentLine = block / sourceImg->GetWidth() + 8;
+        }
+        else
+        {
+            block += 8;
+        }
+    }
+    ComputeDCT(destImg, sourceImg);
+    ApplyQuantisation(destImg, quantScale);
+    ComputeInverseDCT(destImg, &destImg);
+}
+
+void ProcessImg::ComputeDCT(
+    Image& destImg,
+    Image* const sourceImg
+)
+{
+    int i, j, u, v;
+    uint8_t N{8}, M{8};
+    uint8_t* pixelDest = destImg.GetImageData();
+    uint8_t* pixelSource = sourceImg->GetImageData();
+    uint16_t imageSize = sourceImg->GetFullImageSize();
+    for (u = 0; u < N; ++u) 
+    {
+        for (v = 0; v < M; ++v) 
+        {
+            for (i = 0; i < N; i++) 
+            {
+                for (j = 0; j < M; j++)
+                {
+                    pixelDest[u * v] += pixelSource[i * j] * 
+                                        cos(M_PI/((float)N) * 
+                                        (i + 1.0 / 2.0) * u) * 
+                                        cos(M_PI/((float)M) * 
+                                        (j + 1.0 / 2.0) * v);
+                }               
+            }
+        }
+    }  
+    
+}
+
+void ProcessImg::ComputeInverseDCT(
+    Image &destImg,
+    Image *const sourceImg)
+{
+    uint8_t N{8}, M{8}, u, v, i, j;
+    uint8_t* pixelDest = destImg.GetImageData();
+    uint8_t* pixelSource = sourceImg->GetImageData();
+    uint16_t imageSize = sourceImg->GetFullImageSize();
+    uint16_t widthImg = sourceImg->GetWidth();
+    for(uint16_t block = 0; block < imageSize; )
+    {
+        for (u = 0; u < N; ++u) 
+        {
+            for (v = 0; v < M; ++v)
+            {
+                // Matrix[u][v] = 1.0 / 4.0 * DCTMatrix[0][0];
+                pixelDest[u * v + block] = 1.0 / 4.0 * pixelSource[0];
+                for(i = 1; i < N; i++)
+                {
+                    // Matrix[u][v] += 1.0 / 2.0 * DCTMatrix[i][0];
+                    pixelDest[u * v] += 1.0 / 2.0 * pixelSource[i * N];
+                }
+                for(j = 1; j < M; j++)
+                {
+                    // Matrix[u][v] += 1.0 / 2.0 * DCTMatrix[0][j];
+                    pixelDest[u * v] += 1.0 / 2.0 * pixelSource[j];
+                }
+
+                for (i = 1; i < N; i++)
+                {
+                    for (j = 1; j < M; j++) 
+                    {
+                        // Matrix[u][v] += DCTMatrix[i][j] * 
+                        //                 cos(M_PI/((float)N) *
+                        //                 (u + 1.0/2.0) * i)*
+                        //                 cos(M_PI / ((float)M) *
+                        //                 (v + 1.0/2.0) * j);
+                        pixelDest[u * v] += pixelSource[i * j] *
+                                            cos(M_PI/((float)N) *
+                                            (u + 1.0/2.0) * i)*
+                                            cos(M_PI / ((float)M) *
+                                            (v + 1.0/2.0) * j);
+                    }               
+                }
+                // Matrix[u][v] *= 2.0 / ((float)N) * 2.0 / ((float)M);
+                pixelDest[u * v] *= 2.0 / ((float)N) * 2.0 / ((float)M);
+            }
+        }
+        if (block % widthImg == 0)
+        {
+
+        }  
+    }
+
+}
+
+void ProcessImg::ApplyQuantisation(
+    Image& destImg,
+    uint8_t const& quantScale
+)
+{
+    uint8_t* pixelData = destImg.GetImageData();
+    for(uint16_t i = 0; destImg.GetFullImageSize(); i++)
+    {
+        pixelData[i] = pixelData[i] / quantScale;
     }
 }

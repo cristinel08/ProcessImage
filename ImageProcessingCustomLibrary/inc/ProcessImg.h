@@ -5,12 +5,9 @@
 #pragma once
 class ProcessImg
 {
-private:
-    /* data */
 public:
     ProcessImg() = default;
     ~ProcessImg() = default;
-
     void ModifyIntensityLvl(
         Image&          destImg,
         Image* const    sourceImg,
@@ -27,5 +24,23 @@ public:
         Image&                  destImg,
         Image* const            sourceImg,
         Matrix<float>* const    rotMatrix
+    );
+    void CreateJPEG(
+        Image&      destImg,
+        Image* const sourceImg,
+        uint8_t const& quantScale
+    );
+private:
+    void ComputeDCT(
+        Image& destImg,
+        Image* const sourceImg
+    );
+    void ComputeInverseDCT(
+        Image& destImg,
+        Image* const sourceImg
+    );
+    void ApplyQuantisation(
+        Image& destImg,
+        uint8_t const& quantScale
     );
 };

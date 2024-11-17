@@ -54,7 +54,7 @@ uint8_t* Image::GetImageData(
     return reinterpret_cast<uint8_t*>(img_.data);
 }
 
-uint32_t Image::FullImageSize(
+uint32_t Image::GetFullImageSize(
     void
 )
 {
@@ -89,4 +89,11 @@ uint16_t Image::GetHeight(
 )
 {
     return height_;
+}
+
+cv::Mat Image::GetMat(
+    void
+)
+{
+    return img_;
 }
